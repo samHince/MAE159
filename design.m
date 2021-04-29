@@ -6,39 +6,37 @@
 clc;
 clear;
 
-lambda = 0.35; %taper ratio 
-Lambda = 25; %deg sweep angle
+% specs
+lambda = 0.35;              % taper ratio 
+Lambda = 25;                % deg sweep angle
+AR = 7.8;                   % aspect ratio 
+fus_mount_eng = false;      % engine mounting position
+PAX = 225;                  % number of passengers
+abrest = 6;                 % passengers per row
+aisles = 1;                 % number of cabin isles
+W_cargo = 6000;             % cargo weight. total? or added to passengers?
+engines = 2;                % number of engines
+crew = 2;                   % number of crew members
+conventionalWing = false;   % conventional or supercritical wing design
+TOFL = 10500;                % take off field length 
+M = 0.8;                    % cruise mach number
+V_ap = 140;                 % approach velocity kts
+R_target = 7400;            % target range
+x = 0.65;                   % ??? fuel burned or something 
 
-AR = 7.8;
-fus_mount_eng = false;
-PAX = 200;
-abrest = 6;
-aisles = 1;
-
-%fuel_frac = 0.317387;
-delta_fuel = 0;
-W_cargo = 6000;
-engines = 2;
-crew = 2;
-WS = 128.2305; % WS_TO from last code
-eta = 1.5 * 2.5; %ultimate load factor
-
-conventionalWing = false;
-TOFL = 7000;
-% 
-
-M = 0.8;
-V_ap = 140; % approach velocity
-R_target = 3900;
-
-x = 0.65;
-sigma = 0.953;
-
-Cl_convergence = 0.05; % within 5%
-Cl_not_converged = true;
+% constants
+eta = 1.5 * 2.5;            % ultimate load factor
+sigma = 0.953;              % 
+Cl_convergence = 0.05;      % within 5%
+Cl_not_converged = true;    % 
+delta_fuel = 0;             % 
 
 %% Week 2
-while(1)
+
+while(1) % range sizing loop
+    
+    % Week 1: 
+    
     % 1:
     Cl = 0.5;
 
@@ -110,23 +108,13 @@ while(1)
     M_lo = (V_lo / 661) / sigma^0.5; %%%%%%%%%%%%%%%%%  mistake in my hand clacs...
     M_lo_7 = 0.7 * M_lo;
 
-    % pause here
-
-    %%
-    % from JT9D % fig 2:22b
-
     TSLST =  1783.69092191008 * 0^3 +  35254.9077204685 * 0^2 +  -47130.304093035 * 0 +  45493.0238331319;
     T_7 =  1783.69092191008 * M_lo_7^3 +  35254.9077204685 * M_lo_7^2 +  -47130.304093035 * M_lo_7 +  45493.0238331319;
 
     W_to_T = WT_7 * (T_7 / TSLST);
 
     %% Week 3
-
-
-
-    % Engine_Mount_Factor(s) =   
-
-
+    
     % wing
     tc_bar = tc + 0.03;
 
@@ -138,8 +126,7 @@ while(1)
         kts = 0.17;
     end
 
-    W_Wing_coef = (0.00945 * AR^0.8 * (1+lambda)^0.25 * kw * eta^0.5) / (tc_bar^0.4 * cosd(Lambda) * (WS)^0.695);
-
+    W_Wing_coef = (0.00945 * AR^0.8 * (1+lambda)^0.25 * kw * eta^0.5) / (tc_bar^0.4 * cosd(Lambda) * (WS_TO)^0.695);
 
     % fuse
     kf = 11.5; % only for PAX > 135
@@ -160,11 +147,7 @@ while(1)
     W_FixE = (132 * PAX) + (300 * engines) + (260 * crew) + (170 * stew);
     W_FixE_coef = 0.035;
 
-    %% combine and solve
-    % A = W_Total;            
-    % B = W_Fusleage;            
-    % C = W_Landing+W_Pylon+W_Power+W_Fuel+.035-1;            
-    % D = W_Payload+W_FixE;       
+    %% combine and solve    
 
     Wto = 400000; % guess
     error = 100;
@@ -273,12 +256,15 @@ while(1)
     T_r = ((W_0 + W_1) / 2) / L_D;
 
     T_r_JT9D = T_r * (45500 / T_e) / engines;
-
-    disp(T_r_JT9D)
-    disp(M)
-
-    c = 0.625; %input("imput c from plot");
-
+    
+    if(M == 0.8)
+        c = -3.06560814265018e-12 * T_r_JT9D^3 + 5.74104252722318e-08 * T_r_JT9D^2 - 0.000359687077287831 * T_r_JT9D + 1.36612937858716;
+    elseif(M == 0.85)
+        c = -1.32312728083244e-12 * T_r_JT9D^3 + 3.98265752145154e-08 * T_r_JT9D^2 - 0.000305169945014684 * T_r_JT9D + 1.34664881436086;
+    else
+        disp("No engine data for mach number")
+    end
+    
     V_cruise = M * 574; % fix haaack
     R_cruise = (V_cruise / c) * L_D * log(W_0 / W_1); %check log type
 
@@ -294,8 +280,39 @@ while(1)
         disp("DONE")
         break;
     end
+    
+    %% Check on T_req at top of climb
+    
+    Cl_IC = (W_0 / S) / (1481 * 0.2360 * M^2); % fix 0.2360
+    C_Di_IC = Cl_IC^2 / (pi * AR * e_var);
+    C_D_IC = C_D0 + C_Di_IC + 0.0010;
+    L_D_IC = Cl_IC / C_D_IC;
+    T_r_IC = ((W_0 + W_1) / 2) / L_D_IC;
+    T_r_JT9D_IC = T_r_IC * (45500 / T_e) / engines;
+    
+    T_avail_T_r_JT9D = 10000; % where did this come from? 
+    
+    if(T_r_JT9D_IC < T_avail_T_r_JT9D)
+        disp("Top of climb check passed")
+    elseif(T_r_JT9D_IC > T_avail_T_r_JT9D)
+        % add fuel 
+        disp("Top of climb check failed")
+    else
+        disp("This shouldnt happen")
+    end
+    
+    %% Climb gradients
+    
+    %% Landing
+    
+    %% DOC
+    
+    D = R_target * 1.15;
+    
+    
 
 end
 
 %% double check... 
 
+W_Fuel_coef * Wto
