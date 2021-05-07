@@ -6,7 +6,25 @@
 clc;
 clear;
 
-% specs
+% % specs
+% lambda = 0.35;              % taper ratio 
+% Lambda = 35;                % deg sweep angle
+% AR = 8;                   % aspect ratio 
+% fus_mount_eng = false;      % engine mounting position
+% PAX = 275;                  % number of passengers
+% abrest = 8;                 % passengers per row
+% aisles = 2;                 % number of cabin isles
+% W_cargo = 12000;             % cargo weight. total? or added to passengers?
+% engines = 2;                % number of engines
+% crew = 2;                   % number of crew members
+% conventionalWing = false;   % conventional or supercritical wing design
+% TOFL = 9000;                % take off field length 
+% M = 0.8;                    % cruise mach number
+% V_ap = 140;                 % approach velocity kts
+% R_target = 6000;            % target range
+% x = 0.65;                   % ??? fuel burned or something 
+
+% specs long haul
 lambda = 0.35;              % taper ratio 
 Lambda = 35;                % deg sweep angle
 AR = 8;                   % aspect ratio 
@@ -24,19 +42,37 @@ V_ap = 140;                 % approach velocity kts
 R_target = 6000;            % target range
 x = 0.65;                   % ??? fuel burned or something 
 
+% % specs hand calcs
+% lambda = 0.35;              % taper ratio 
+% Lambda = 35;                % deg sweep angle
+% AR = 8;                   % aspect ratio 
+% fus_mount_eng = false;      % engine mounting position
+% PAX = 275;                  % number of passengers
+% abrest = 8;                 % passengers per row
+% aisles = 2;                 % number of cabin isles
+% W_cargo = 12000;             % cargo weight. total? or added to passengers?
+% engines = 2;                % number of engines
+% crew = 2;                   % number of crew members
+% conventionalWing = false;   % conventional or supercritical wing design
+% TOFL = 9000;                % take off field length 
+% M = 0.8;                    % cruise mach number
+% V_ap = 140;                 % approach velocity kts
+% R_target = 6000;            % target range
+% x = 0.65;                   % ??? fuel burned or something 
+
 % constants
 eta = 1.5 * 2.5;            % ultimate load factor
 sigma = 0.953;              % 
-Cl_convergence = 0.05;      % within 5%
+Cl_convergence = 0.0001;      %0.05;      % within 5%
 Cl_not_converged = true;    % 
 delta_fuel = 0;             % 
 
 % master loops
+counter = 0;
 rec = [];
-for Lambda = 25:45
-    for AR = 6:0.1:10
-
-
+for Lambda = 20:5:50
+    for AR = 8:0.1:14
+        
         %% Week 2
 
         while(1) % range sizing loop
@@ -90,11 +126,17 @@ for Lambda = 25:45
                 Cl_cru = WS_cru / (1481 * 0.2360 * (M^2));
 
                 % loop
-                if((abs(Cl_cru - Cl)/Cl) < Cl_convergence)
+                %if((abs(Cl_cru - Cl)/Cl) < Cl_convergence)
+                if(abs(Cl_cru - Cl) > 0.00001)
                     Cl_not_converged = false;
                 end
-
-                Cl = Cl_cru;
+                
+                if(Cl_cru > Cl)
+                    Cl = Cl + 0.00001;
+                elseif(Cl_cru < Cl)
+                    Cl = Cl - 0.00001;
+                end
+                % Cl = Cl_cru;
 
             end
             Cl_not_converged = true; % reset
@@ -156,10 +198,10 @@ for Lambda = 25:45
             %% combine and solve    
 
             Wto = 400000; % guess
-            error = 100;
-            step = 50;
+            error = 10;
+            step = 5;
 
-            while (abs(error) >= 100)
+            while (abs(error) >= 10)
 
                 if (error > 0)
                     Wto = Wto + step;
@@ -277,155 +319,198 @@ for Lambda = 25:45
             R = Range_cl + R_cruise;
 
             if(R < (R_target - 50))
-                delta_fuel = delta_fuel + 0.001;
-                disp("Adding fuel")
+                delta_fuel = delta_fuel + 0.00001;
+%                disp("Adding fuel")
             elseif(R > (R_target + 50))
-                delta_fuel = delta_fuel - 0.001;
-                disp("Removing fuel")
+                delta_fuel = delta_fuel - 0.00001;
+%                disp("Removing fuel")
             else
                 disp("DONE")
                 break;
             end
-
-            %% Check on T_req at top of climb
-
-            Cl_IC = (W_0 / S) / (1481 * 0.2360 * M^2); % fix 0.2360
-            C_Di_IC = Cl_IC^2 / (pi * AR * e_var);
-            C_D_IC = C_D0 + C_Di_IC + 0.0010;
-            L_D_IC = Cl_IC / C_D_IC;
-            T_r_IC = ((W_0 + W_1) / 2) / L_D_IC;
-            T_r_JT9D_IC = T_r_IC * (45500 / T_e) / engines;
-
-            T_avail_T_r_JT9D = 10000; % where did this come from? -- from max continuous thrust at 35k ft "nathan" - max cruise thjrust
-
-            if(T_r_JT9D_IC < T_avail_T_r_JT9D)
-                disp("Top of climb check passed")
-            elseif(T_r_JT9D_IC > T_avail_T_r_JT9D)
-                % add fuel 
-                disp("Top of climb check failed")
-            else
-                disp("This shouldnt happen")
-            end
-
-            %% Climb gradients
-
-            %% Landing
-
-            %% DOC
-
-            % Block speed
-
-            D = R_target * 1.15; % range with no reserve in statute miles
-            T_gm = 0.25; % ground maneuver time (given) or use forula on pg 63? -- use formula 
-            T_cl = Time_cl / 60; % climb time ????????????????????????????????????????????
-            T_d = 0; % simple and mod? 
-            T_am = 0.10; % air maneuver time (given)
-
-            if(D < 1400)
-                K_a = 7 + (0.015 * D);
-            else
-                K_a = 0.02 * D;
-            end
-            V_cr = V_cruise * 1.15; % TAS?
-            D_c = Range_cl;
-            D_d = 0;
-
-            T_cr = (D + K_a + 20 - D_c - D_d) / V_cr;
-
-            V_b = D / (T_gm + T_cl + T_d + T_cr + T_am);
-
-            % Block time
-
-            T_block = T_gm + T_cl + T_d + T_cr + T_am;
-
-            % Block fuel
-
-            F_gm = 0;
-            F_cl = W_f_cl; 
-            F_D = 0;
-            Fcr_and_Fam = T_r * c * (T_cr + T_am);
-
-            F_B = F_gm + F_cl + F_D + Fcr_and_Fam;
-
-            % Flying operations costs
-
-            % flight crew: 
-            P = W_Payload / 2000; % tons
-            if(crew == 2)
-                Price_BLKHR = (17.849 * (V_cr * (Wto / 10e5))^0.3) + 40.83;
-            elseif(crew == 3)
-                Price_BLKHR = (24.261 * (V_cr * (Wto / 10e5))^0.3) + 57.62;
-            else
-                disp ("ERROR")
-            end
-
-            C_crew = Price_BLKHR / (V_b * P);
-
-            % Fuel and Oil
-            C_fuel = 0.0625; % /gal % = (0.40 / Gal) * (1/6.4/Gal)
-            C_oil = 2.15; % /gal
-
-            C_fuel_oil = (1.02 * F_B * C_fuel + engines * C_oil * T_block * 0.135) / (D * P);
-
-            % Hull insurance 
-            W_FCR = 0;
-            W_a = Wto * (1 - fuel_frac) - W_Payload - W_FCR - (W_Power_coef * Wto);
-            C_a = (2.4e6) + (87.5 * W_a);
-
-            C_e = 590000 + 16 * T_e;
-
-            IR_A = 0.01; % = insurance rate / $ value
-
-            C_t = (engines * C_e) + C_a;
-
-            U = 630 + 4000 / (1 + 1 / (T_block + 0.5));
-
-            C_hull_ins = (IR_A * C_t) / (U * V_b * P);
-
-            % Dirct Maintainance 
-            % airframe
-
-            K_FH_a = 4.9169 * (log10(W_a / 1000)) - 6.425;
-            K_FC_a = 0.21256 * (log10(W_a / 1000))^3.7375;
-
-            t_f = T_block - T_gm;
-            R_L = 8.60; % 1975
-
-            C_labor = ((K_FH_a * t_f + K_FC_a) / (V_b * T_block * P)) * (R_L) * (1 + 0.29 * (M - 1))^1.5;
-
-            % material 
-            C_FH_a = 1.5994 * C_a / 10e6 + 3.4263;
-            C_FC_a = 1.9229 * C_a / 10e6 + 2.2504;
-
-            C_material = (C_FH_a * t_f + C_FC_a) / (V_b * T_block * P);
-
-            % engines
-            K_FH_e = engines * (T_e / 10e3) / (0.82715 * (T_e / 10e3) + 13.639);
-            K_FC_e = 0.20 * engines;
-
-            C_engines = ((K_FH_e * t_f + K_FC_e) / (V_b * T_block * P)) * R_L;
-
-            % eng material
-            C_FH_e = (28.2353 * (C_e / 10e6) - 6.5176) * engines;
-            C_FC_e = (3.6698 * (C_e / 10e6) + 1.3685) * engines;
-
-            C_eng_mat = (C_FH_e * t_f + C_FC_e) / (V_b * T_block * P);
-
-            % maintainance 
-            maint_mult = 1;
-            C_maintain = (C_labor + C_material + C_engines + C_eng_mat) * maint_mult;
-
-            % depreciation 
-            D_a = 14;
-            C_depreciation = (1/(V_b * P)) * (C_t + 0.06 * (C_t - engines * C_e) + 0.30 * engines * C_e) / (D_a * U);
-
-            % sum it up 
-            DOC = C_crew + C_fuel_oil + C_hull_ins + C_labor + C_material + C_engines + C_eng_mat + C_maintain + C_depreciation;
-
+            
         end
+
+        %% Check on T_req at top of climb
+
+        Cl_IC = (W_0 / S) / (1481 * 0.2360 * M^2); % fix 0.2360
+        C_Di_IC = Cl_IC^2 / (pi * AR * e_var);
+        C_D_IC = C_D0 + C_Di_IC + 0.0010;
+        L_D_IC = Cl_IC / C_D_IC;
+        T_r_IC = ((W_0 + W_1) / 2) / L_D_IC;
+        T_r_JT9D_IC = T_r_IC * (45500 / T_e) / engines;
+
+        T_avail_T_r_JT9D = 10000; % where did this come from? -- from max continuous thrust at 35k ft "nathan" - max cruise thjrust
+
+        if(T_r_JT9D_IC < T_avail_T_r_JT9D)
+%            disp("Top of climb check passed")
+        elseif(T_r_JT9D_IC > T_avail_T_r_JT9D)
+            % add fuel 
+            disp("Top of climb check failed")
+        else
+            disp("This shouldnt happen")
+        end
+
+        %% Climb gradients
+
+        %% Landing
+
+        %% DOC
+
+        % Block speed
+
+        D = R_target * 1.15; % range with no reserve in statute miles
+        T_gm = 0.25; % ground maneuver time (given) or use forula on pg 63? -- use formula 
+        T_cl = Time_cl / 60; % climb time ????????????????????????????????????????????
+        T_d = 0; % simple and mod? 
+        T_am = 0.10; % air maneuver time (given)
+
+        if(D < 1400)
+            K_a = 7 + (0.015 * D);
+        else
+            K_a = 0.02 * D;
+        end
+        V_cr = V_cruise * 1.15; % TAS?
+        D_c = Range_cl;
+        D_d = 0;
+
+        T_cr = (D + K_a + 20 - D_c - D_d) / V_cr;
+
+        V_b = D / (T_gm + T_cl + T_d + T_cr + T_am);
+
+        % Block time
+
+        T_block = T_gm + T_cl + T_d + T_cr + T_am;
+
+        % Block fuel
+
+        F_gm = 0;
+        F_cl = W_f_cl; 
+        F_D = 0;
+        Fcr_and_Fam = T_r * c * (T_cr + T_am);
+
+        F_B = F_gm + F_cl + F_D + Fcr_and_Fam;
+
+        % Flying operations costs
+
+        % flight crew: 
+        P = W_Payload / 2000; % tons
+        if(crew == 2)
+            Price_BLKHR = (17.849 * (V_cr * (Wto / 10e5))^0.3) + 40.83;
+        elseif(crew == 3)
+            Price_BLKHR = (24.261 * (V_cr * (Wto / 10e5))^0.3) + 57.62;
+        else
+            disp ("ERROR")
+        end
+
+        C_crew = Price_BLKHR / (V_b * P);
+
+        % Fuel and Oil
+        C_fuel = 0.0625; % /gal % = (0.40 / Gal) * (1/6.4/Gal)
+        C_oil = 2.15; % /gal
+
+        C_fuel_oil = (1.02 * F_B * C_fuel + engines * C_oil * T_block * 0.135) / (D * P);
+
+        % Hull insurance 
+        W_FCR = 0;
+        W_a = Wto * (1 - fuel_frac) - W_Payload - W_FCR - (W_Power_coef * Wto);
+        C_a = (2.4e6) + (87.5 * W_a);
+
+        C_e = 590000 + 16 * T_e;
+
+        IR_A = 0.01; % = insurance rate / $ value
+
+        C_t = (engines * C_e) + C_a;
+
+        U = 630 + 4000 / (1 + 1 / (T_block + 0.5));
+
+        C_hull_ins = (IR_A * C_t) / (U * V_b * P);
+
+        % Dirct Maintainance 
+        % airframe
+
+        K_FH_a = 4.9169 * (log10(W_a / 1000)) - 6.425;
+        K_FC_a = 0.21256 * (log10(W_a / 1000))^3.7375;
+
+        t_f = T_block - T_gm;
+        R_L = 8.60; % 1975
+
+        C_labor = ((K_FH_a * t_f + K_FC_a) / (V_b * T_block * P)) * (R_L) * (1 + 0.29 * (M - 1))^1.5;
+
+        % material 
+        C_FH_a = 1.5994 * C_a / 10e6 + 3.4263;
+        C_FC_a = 1.9229 * C_a / 10e6 + 2.2504;
+
+        C_material = (C_FH_a * t_f + C_FC_a) / (V_b * T_block * P);
+
+        % engines
+        K_FH_e = engines * (T_e / 10e3) / (0.82715 * (T_e / 10e3) + 13.639);
+        K_FC_e = 0.20 * engines;
+
+        C_engines = ((K_FH_e * t_f + K_FC_e) / (V_b * T_block * P)) * R_L;
+
+        % eng material
+        C_FH_e = (28.2353 * (C_e / 10e6) - 6.5176) * engines;
+        C_FC_e = (3.6698 * (C_e / 10e6) + 1.3685) * engines;
+
+        C_eng_mat = (C_FH_e * t_f + C_FC_e) / (V_b * T_block * P);
+
+        % maintainance 
+        maint_mult = 1;
+        C_maintain = (C_labor + C_material + C_engines + C_eng_mat) * maint_mult;
+
+        % depreciation 
+        D_a = 14;
+        C_depreciation = (1/(V_b * P)) * (C_t + 0.06 * (C_t - engines * C_e) + 0.30 * engines * C_e) / (D_a * U);
+
+        % sum it up 
+        DOC = C_crew + C_fuel_oil + C_hull_ins + C_labor + C_material + C_engines + C_eng_mat + C_maintain + C_depreciation;
+
+     
         % record data
-        rec = [rec; [DOC, Lambda, AR]];
+        counter = counter + 1;
+        fprintf("Recording design %i", counter)
+        rec = [rec; [DOC, AR, Lambda, Wto, aisles, abrest]];
         
     % end master loops    
     end
 end
+
+%% plots to make: 
+
+% AR and Lambda vs DOC
+marker = {'+','o','.','-'};   
+hold on
+for i = 20:5:30
+    df = rec(rec(:,3)==i,:);
+    plot(df(:,2), df(:,1), marker{(i-15)/5})
+end
+legend('+','o','.')
+title('Line Plot of Sine and Cosine Between -2\pi and 2\pi')
+xlabel('-2\pi < x < 2\pi') 
+ylabel('Sine and Cosine Values') 
+hold off
+
+% AR and Lambda vd Weight
+marker = {'+','o','.','-'};   
+hold on
+for i = 20:5:30
+    df = rec(rec(:,3)==i,:);
+    plot(df(:,2), df(:,4), marker{(i-15)/5})
+end
+legend('+','o','.')
+title('Line Plot of Sine and Cosine Between -2\pi and 2\pi')
+xlabel('-2\pi < x < 2\pi') 
+ylabel('Sine and Cosine Values') 
+hold off
+
+% DOC for 1 vs 2 aisle
+
+% Additional:
+% # abreast vs DOC
+
+% DOC vs advanced tech
+
+% Weight vs DOC
+% df = final plane
+plot(df(:,4), df(:,1), ".")
