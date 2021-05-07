@@ -32,9 +32,8 @@ Cl_not_converged = true;    %
 delta_fuel = 0;             % 
 
 % master loops
-rec = [];
-for Lambda = 25:45
-    for AR = 6:0.1:10
+for Lambda = 25:
+    for y in yy
 
 
         %% Week 2
@@ -423,9 +422,6 @@ for Lambda = 25:45
             DOC = C_crew + C_fuel_oil + C_hull_ins + C_labor + C_material + C_engines + C_eng_mat + C_maintain + C_depreciation;
 
         end
-        % record data
-        rec = [rec; [DOC, Lambda, AR]];
-        
     % end master loops    
     end
 end

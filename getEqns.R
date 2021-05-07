@@ -135,3 +135,32 @@ print(eqnJT9D_SL)
 
 approx(x = JT9D_SL$V1, y = JT9D_SL$V2, xout = 0.2, method="linear")$y
 predict(modelJT9D_SL, data.frame(V1 = 0.2))
+
+################################################################################
+### Figure JT9D35Kft ###
+# 0.8 M
+JT9D35Kft <- read.csv(file = './JT9D35Kft8M.csv', header = F)
+JT9D35Kft$V2 <- JT9D35Kft$V2 * 1000
+modelJT9D35Kft <- lm(V3 ~ V2 + I(V2^2) + I(V2^3), data=JT9D35Kft)
+eqnJT9D35Kft <- paste("y = ", modelJT9D35Kft$coefficients[4], "* x^3 + ",
+                      modelJT9D35Kft$coefficients[3], "* x^2 + ",
+                      modelJT9D35Kft$coefficients[2], "* x + ",
+                      modelJT9D35Kft$coefficients[1])
+print(eqnJT9D35Kft)
+
+approx(x = JT9D35Kft$V2, y = JT9D35Kft$V3, xout = 4.6481e+03, method="linear")$y
+predict(modelJT9D35Kft, data.frame(V2 = 4.6481e+03))
+
+### Figure JT9D35Kft ###
+# 0.85 M
+JT9D35Kft <- read.csv(file = './JT9D35Kft85M.csv', header = F)
+JT9D35Kft$V2 <- JT9D35Kft$V2 * 1000
+modelJT9D35Kft <- lm(V3 ~ V2 + I(V2^2) + I(V2^3), data=JT9D35Kft)
+eqnJT9D35Kft <- paste("y = ", modelJT9D35Kft$coefficients[4], "* x^3 + ",
+                      modelJT9D35Kft$coefficients[3], "* x^2 + ",
+                      modelJT9D35Kft$coefficients[2], "* x + ",
+                      modelJT9D35Kft$coefficients[1])
+print(eqnJT9D35Kft)
+
+approx(x = JT9D35Kft$V2, y = JT9D35Kft$V3, xout = 4.6481e+03, method="linear")$y
+predict(modelJT9D35Kft, data.frame(V2 = 4.6481e+03))
